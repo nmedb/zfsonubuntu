@@ -1,4 +1,5 @@
 export TARGET_HOSTNAME="hostname"
+export TIMEZONE=Europe/Copenhagen
 export NETWORK_INTERFACE=eth0
 export DISK=/dev/
 export PART1=${DISK}1
@@ -60,9 +61,10 @@ ln -s /dev/mapper/rpool_crypt /dev/rpool_crypt
 echo 'ENV{DM_NAME}=="rpool_crypt", SYMLINK+="rpool_crypt"' > /etc/udev/rules.d/99-rpool_crypt.rules
 locale-gen en_US.UTF-8
 
+IFS=/ read -ra TZ <<< $TIMEZONE
 debconf-set-selections <<EOF
-tzdata tzdata/Areas select Europe
-tzdata tzdata/Zones/Europe select Copenhagen
+tzdata tzdata/Areas select ${TZ[0]}
+tzdata tzdata/Zones/${TZ[0]} select ${TZ[1]}
 tzdata tzdata/Zones/Etc select
 EOF
 rm /etc/localtime /etc/timezone
