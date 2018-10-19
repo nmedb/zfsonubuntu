@@ -1,9 +1,9 @@
 export TARGET_HOSTNAME="hostname"
 export NETWORK_INTERFACE=eth0
 export DISK=/dev/
-export PART1=${DISK}1
-export PART2=${DISK}2
-export PART3=${DISK}3
+export BOOT_DEVICE=${DISK}1
+export EFI_DEVICE=${DISK}2
+export LUKS_DEVICE=${DISK}3
 export DIST_CODENAME=$(lsb_release -sc)
 
 #----------------------------------------------------------------------------------------------------
@@ -16,10 +16,10 @@ sgdisk -n2:0:+256M -t2:EF00 $DISK
 sgdisk -n9:-8M:0 -t9:BF07 $DISK
 sgdisk -n3:0:0 -t3:8300 $DISK
 
-cryptsetup luksFormat -c aes-xts-plain64 -s 512 -h sha512 ${PART3}
+cryptsetup luksFormat -c aes-xts-plain64 -s 512 -h sha512 ${LUKS_DEVICE}
 # prompt
 
-cryptsetup luksOpen ${PART3} rpool_crypt
+cryptsetup luksOpen ${LUKS_DEVICE} rpool_crypt
 # prompt
 
 zpool create -o ashift=12 -O atime=off -O canmount=off -O compression=lz4 -O normalization=formD -O mountpoint=/ -R /mnt rpool /dev/mapper/rpool_crypt
@@ -39,13 +39,13 @@ debootstrap ${DIST_CODENAME} /mnt
 
 zfs set devices=off rpool
 
-mkfs.ext4 -F -m 0 -L /boot -j ${PART1}
-mkdosfs -F 32 -n EFI ${PART2}
+mkfs.ext4 -F -m 0 -L /boot -j ${BOOT_DEVICE}
+mkdosfs -F 32 -n EFI ${EFI_DEVICE}
 echo "/dev/mapper/rpool_crypt / zfs defaults 0 0"  >> /mnt/etc/fstab
-UUID1=$(blkid -o value -s UUID ${PART1})
-UUID2=$(blkid -o value -s UUID ${PART2})
-echo "UUID=${UUID1} /boot auto defaults 0 0" >> /mnt/etc/fstab
-echo "UUID=${UUID2} /boot/efi vfat defaults 0 1" >> /mnt/etc/fstab
+BOOT_DEVICE_UUID=$(blkid -o value -s UUID ${BOOT_DEVICE})
+EFI_DEVICE_UUID=$(blkid -o value -s UUID ${EFI_DEVICE})
+echo "UUID=${BOOT_DEVICE_UUID} /boot auto defaults 0 0" >> /mnt/etc/fstab
+echo "UUID=${EFI_DEVICE_UUID} /boot/efi vfat defaults 0 1" >> /mnt/etc/fstab
 
 echo "$TARGET_HOSTNAME" > /mnt/etc/hostname
 sed -i 's,localhost,localhost\n127.0.1.1\t'$TARGET_HOSTNAME',' /mnt/etc/hosts
@@ -97,8 +97,8 @@ addgroup --system sambashare
 passwd
 # prompt to set root password
 
-UUID3=$(blkid -o value -s UUID ${PART3})
-echo "rpool_crypt UUID=${UUID3} none luks,discard" >> /etc/crypttab
+LUKS_DEVICE_UUID=$(blkid -o value -s UUID ${LUKS_DEVICE})
+echo "rpool_crypt UUID=${LUKS_DEVICE_UUID} none luks,discard" >> /etc/crypttab
 update-initramfs -c -k all
 sed -i 's,GRUB_CMDLINE_LINUX="",GRUB_CMDLINE_LINUX="boot=zfs",' /etc/default/grub
 update-grub
