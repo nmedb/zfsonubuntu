@@ -5,6 +5,7 @@ export PART1=${DISK}1
 export PART2=${DISK}2
 export PART3=${DISK}3
 export DIST_CODENAME=$(lsb_release -sc)
+export PACKAGES="ubuntu-server"
 
 #----------------------------------------------------------------------------------------------------
 
@@ -86,7 +87,7 @@ deb http://security.ubuntu.com/ubuntu ${DIST_CODENAME}-security main universe mu
 deb http://archive.ubuntu.com/ubuntu ${DIST_CODENAME}-updates main universe multiverse
 EOF
 apt update
-apt install --yes ubuntu-server
+apt install --yes $PACKAGES
 apt install --yes --no-install-recommends linux-image-generic
 apt install --yes zfs-initramfs cryptsetup grub-efi grub-efi-amd64
 apt install --yes ifupdown
