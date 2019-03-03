@@ -5,9 +5,11 @@
 export TARGET_HOSTNAME="hostname"
 export TIMEZONE=Europe/Copenhagen
 export NETWORK_INTERFACE=eth0
+export SWAP_SIZE=8G
 export DISK=/dev/DEVICE
 export BOOT_DEVICE=${DISK}1
 export EFI_DEVICE=${DISK}2
+export SWAP_DEVICE=${DISK}4
 export LUKS_DEVICE=${DISK}3
 export DIST_CODENAME=$(lsb_release -sc)
 export PACKAGES="ubuntu-server"
@@ -25,6 +27,7 @@ sgdisk -o $DISK
 sgdisk -n1:1M:+512M -t1:8300 $DISK
 sgdisk -n2:0:+256M -t2:EF00 $DISK
 sgdisk -n9:-8M:0 -t9:BF07 $DISK
+sgdisk -n4:0:+${SWAP_SIZE} -t4:8200 $DISK
 sgdisk -n3:0:0 -t3:8300 $DISK
 ```
 
@@ -69,6 +72,7 @@ BOOT_DEVICE_UUID=$(blkid -o value -s UUID ${BOOT_DEVICE})
 EFI_DEVICE_UUID=$(blkid -o value -s UUID ${EFI_DEVICE})
 echo "UUID=${BOOT_DEVICE_UUID} /boot auto defaults 0 0" >> /mnt/etc/fstab
 echo "UUID=${EFI_DEVICE_UUID} /boot/efi vfat defaults 0 1" >> /mnt/etc/fstab
+echo "/dev/mapper/swap_crypt none swap sw 0 0" >> /mnt/etc/fstab
 ```
 
 ## Prepare chroot for install
@@ -141,6 +145,7 @@ passwd
 ```
 LUKS_DEVICE_UUID=$(blkid -o value -s UUID ${LUKS_DEVICE})
 echo "${ZPOOL}_crypt UUID=${LUKS_DEVICE_UUID} none luks,discard" >> /etc/crypttab
+echo "swap_crypt ${SWAP_DEVICE} /dev/urandom cipher=aes-xts-plain64,size=256,swap,discard" >> /etc/crypttab
 update-initramfs -c -k all
 sed -i 's,GRUB_CMDLINE_LINUX="",GRUB_CMDLINE_LINUX="boot=zfs",' /etc/default/grub
 update-grub
